@@ -20,9 +20,7 @@ import (
 	"sync"
 
 	"github.com/pingcap/errors"
-	"github.com/pingcap/log"
 	"github.com/pingcap/parser/mysql"
-	"go.uber.org/zap"
 )
 
 // ErrCode represents a specific error type in a error class.
@@ -212,18 +210,18 @@ func getMySQLErrorCode(e *Error) uint16 {
 		if ec, has := rfcCode2errClass.Get(string(rfcCode)[:index]); has {
 			class = ec
 		} else {
-			log.Warn("Unknown error class", zap.String("class", string(rfcCode)[:index]))
+			// Unknown error class: ignoring for minimal build
 			return defaultMySQLErrorCode
 		}
 	}
 	codeMap, ok := ErrClassToMySQLCodes[class]
 	if !ok {
-		log.Warn("Unknown error class", zap.Int("class", int(class)))
+		// Unknown error class: ignoring for minimal build
 		return defaultMySQLErrorCode
 	}
 	_, ok = codeMap[ErrCode(e.Code())]
 	if !ok {
-		log.Debug("Unknown error code", zap.Int("class", int(class)), zap.Int("code", int(e.Code())))
+		// Unknown error code: ignoring for minimal build
 		return defaultMySQLErrorCode
 	}
 	return uint16(e.Code())
@@ -273,7 +271,7 @@ func MustNil(err error, closeFuns ...func()) {
 		for _, f := range closeFuns {
 			f()
 		}
-		log.Fatal("unexpected error", zap.Error(err), zap.Stack("stack"))
+		panic(fmt.Sprintf("unexpected error: %v", err))
 	}
 }
 
@@ -281,14 +279,14 @@ func MustNil(err error, closeFuns ...func()) {
 func Call(fn func() error) {
 	err := fn()
 	if err != nil {
-		log.Error("function call errored", zap.Error(err), zap.Stack("stack"))
+		// Function call errored: ignoring for minimal build
 	}
 }
 
 // Log logs the error if it is not nil.
 func Log(err error) {
 	if err != nil {
-		log.Error("encountered error", zap.Error(err), zap.Stack("stack"))
+		// Encountered error: ignoring for minimal build
 	}
 }
 

@@ -17,12 +17,32 @@ import (
 	"fmt"
 	"runtime"
 	"strconv"
-
-	"go.uber.org/atomic"
+	"sync"
 )
 
 // RedactLogEnabled defines whether the arguments of Error need to be redacted.
-var RedactLogEnabled atomic.Bool
+var (
+	redactLogEnabled bool
+	redactMutex      sync.RWMutex
+)
+
+// RedactLogEnabled provides atomic-like access to the redact flag
+type redactFlag struct{}
+
+func (redactFlag) Store(v bool) {
+	redactMutex.Lock()
+	redactLogEnabled = v
+	redactMutex.Unlock()
+}
+
+func (redactFlag) Load() bool {
+	redactMutex.RLock()
+	v := redactLogEnabled
+	redactMutex.RUnlock()
+	return v
+}
+
+var RedactLogEnabled redactFlag
 
 // ErrCode represents a specific error type in a error class.
 // Same error code can be used in different error classes.
