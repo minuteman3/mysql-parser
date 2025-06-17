@@ -1,7 +1,7 @@
 PATH
   remote: .
   specs:
-    mysql_parser (0.1.1)
+    mysql_parser (0.1.2)
       ffi (~> 1.15)
 
 GEM
