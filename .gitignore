@@ -30,3 +30,11 @@ go.work.sum
 # Editor/IDE
 # .idea/
 # .vscode/
+.claude-session.md
+.claude/
+
+# Ruby LSP cache
+.ruby-lsp/
+
+# Additional build artifacts
+*.h
