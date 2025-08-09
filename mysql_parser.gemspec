@@ -7,7 +7,7 @@ Gem::Specification.new do |spec|
   spec.description   = "Parse MySQL queries and get back AST using TiDB's parser"
   spec.homepage      = "https://github.com/minuteman3/mysql-parser"
   spec.license       = "Apache-2.0"
-  spec.required_ruby_version = ">= 2.7.0"
+  spec.required_ruby_version = ">= 3.3.0"
   
   spec.metadata = {
     "github_repo" => "ssh://github.com/minuteman3/mysql-parser"
