@@ -33,6 +33,21 @@ RSpec.describe MysqlParser do
         sql = 'INVALID SQL STATEMENT'
         expect { MysqlParser.parse(sql) }.to raise_error(MysqlParser::ParseError)
       end
+      
+      it 'includes line and column information in parse errors' do
+        sql = 'SELET * FROM users'  # Typo: SELET instead of SELECT
+        expect { MysqlParser.parse(sql) }.to raise_error(MysqlParser::ParseError) do |error|
+          expect(error.message).to include('line 1')
+          # Column info is basic (just indicates presence), but line is exact
+        end
+      end
+      
+      it 'includes line information for multi-line SQL errors' do
+        sql = "SELECT * FROM users\nWHERE invalid syntax here"
+        expect { MysqlParser.parse(sql) }.to raise_error(MysqlParser::ParseError) do |error|
+          expect(error.message).to include('line 2')
+        end
+      end
     end
     
     context 'rich AST structure' do
@@ -249,8 +264,56 @@ RSpec.describe MysqlParser do
       sql = "SELECT * FROM users"
       tables = MysqlParser.tables(sql)
       
-      expect(tables).to be_an(Array)
-      # This would need proper implementation based on AST structure
+      expect(tables).to eq(["users"])
+    end
+    
+    it 'extracts table names with schema prefix' do
+      sql = "SELECT * FROM db.users"
+      tables = MysqlParser.tables(sql)
+      
+      expect(tables).to eq(["db.users"])
+    end
+    
+    it 'extracts table names from JOIN queries' do
+      sql = "SELECT * FROM users u JOIN orders o ON u.id = o.user_id"
+      tables = MysqlParser.tables(sql)
+      
+      expect(tables).to eq(["orders", "users"])
+    end
+    
+    it 'extracts table names from subqueries' do
+      sql = "SELECT * FROM users WHERE id IN (SELECT user_id FROM orders)"
+      tables = MysqlParser.tables(sql)
+      
+      expect(tables).to eq(["orders", "users"])
+    end
+    
+    it 'handles duplicate table references' do
+      sql = "SELECT * FROM users u1 JOIN users u2 ON u1.parent_id = u2.id"
+      tables = MysqlParser.tables(sql)
+      
+      expect(tables).to eq(["users"])
+    end
+    
+    it 'extracts tables from INSERT SELECT statements' do
+      sql = "INSERT INTO users SELECT * FROM temp_users"
+      tables = MysqlParser.tables(sql)
+      
+      expect(tables).to eq(["temp_users", "users"])
+    end
+    
+    it 'extracts tables from UPDATE with JOIN' do
+      sql = "UPDATE users u JOIN orders o ON u.id = o.user_id SET u.status = 'active'"
+      tables = MysqlParser.tables(sql)
+      
+      expect(tables).to eq(["orders", "users"])
+    end
+    
+    it 'extracts tables from DELETE with subquery' do
+      sql = "DELETE FROM users WHERE id IN (SELECT user_id FROM inactive_users)"
+      tables = MysqlParser.tables(sql)
+      
+      expect(tables).to eq(["inactive_users", "users"])
     end
   end
   
@@ -259,8 +322,44 @@ RSpec.describe MysqlParser do
       sql = "SELECT * FROM users WHERE name = 'John' AND age > 25"
       columns = MysqlParser.filter_columns(sql)
       
-      expect(columns).to be_an(Array)
-      # This would need proper implementation based on AST structure
+      expect(columns).to contain_exactly([nil, "name"], [nil, "age"])
+    end
+    
+    it 'extracts columns with table/alias prefix' do
+      sql = "SELECT * FROM users u WHERE u.id = 1 AND u.status = 'active'"
+      columns = MysqlParser.filter_columns(sql)
+      
+      expect(columns).to contain_exactly(["u", "id"], ["u", "status"])
+    end
+    
+    it 'extracts columns from JOIN conditions in WHERE' do
+      sql = "SELECT * FROM users u JOIN orders o ON u.id = o.user_id WHERE o.total > 100"
+      columns = MysqlParser.filter_columns(sql)
+      
+      expect(columns).to eq([["o", "total"]])
+    end
+    
+    it 'extracts columns from subqueries in WHERE' do
+      sql = "SELECT * FROM users WHERE id IN (SELECT user_id FROM orders WHERE total > 100)"
+      columns = MysqlParser.filter_columns(sql)
+      
+      expect(columns).to contain_exactly([nil, "id"], [nil, "total"], [nil, "user_id"])
+    end
+    
+    it 'extracts columns from UPDATE WHERE clause' do
+      sql = "UPDATE users SET status = 'active' WHERE created_at < NOW()"
+      result = MysqlParser.parse(sql)
+      columns = result.filter_columns
+      
+      expect(columns).to eq([[nil, "created_at"]])
+    end
+    
+    it 'extracts columns from DELETE WHERE clause' do
+      sql = "DELETE FROM users WHERE id = 1 OR email = 'test@example.com'"
+      result = MysqlParser.parse(sql)
+      columns = result.filter_columns
+      
+      expect(columns).to contain_exactly([nil, "id"], [nil, "email"])
     end
   end
   

@@ -72,12 +72,13 @@ module MysqlParser
     end
     
     def table_reference?
-      type.include?('TableName') || type.include?('From') || 
-      type.include?('Join') || type.include?('Table')
+      # Only TableName nodes actually contain table references
+      type.include?('TableName')
     end
     
     def where_clause?
-      type.include?('Where') || type.include?('Condition')
+      # WHERE clauses are typically BinaryOperationExpr nodes with field_name 'Where'
+      data['field_name'] == 'Where'
     end
     
     def inspect

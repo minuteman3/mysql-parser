@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"reflect"
+	"strconv"
 	"strings"
 	"unsafe"
 
@@ -21,6 +22,8 @@ import (
 type Result struct {
 	Success bool        `json:"success"`
 	Error   string      `json:"error,omitempty"`
+	Line    int         `json:"line,omitempty"`
+	Column  int         `json:"column,omitempty"`
 	AST     interface{} `json:"ast,omitempty"`
 }
 
@@ -146,9 +149,14 @@ func parse_sql(sql *C.char) *C.char {
 	var result Result
 	
 	if err != nil {
+		// Extract line and column information from error message
+		// Using simple string operations for performance
+		line, column := extractPositionFromError(err.Error())
 		result = Result{
 			Success: false,
 			Error:   err.Error(),
+			Line:    line,
+			Column:  column,
 		}
 	} else {
 		var astNodes []ASTNode
@@ -169,6 +177,42 @@ func parse_sql(sql *C.char) *C.char {
 //export free_string
 func free_string(str *C.char) {
 	C.free(unsafe.Pointer(str))
+}
+
+// extractPositionFromError extracts line and column information from TiDB parser error messages
+// Uses simple string operations instead of regex for better performance
+func extractPositionFromError(errMsg string) (line int, column int) {
+	// TiDB parser errors include "at line X" format
+	// Example: "near 'SELET' at line 1"
+	
+	// Find "at line " pattern
+	lineMarker := "at line "
+	if idx := strings.Index(errMsg, lineMarker); idx != -1 {
+		// Extract the line number
+		startIdx := idx + len(lineMarker)
+		endIdx := startIdx
+		
+		// Find the end of the number
+		for endIdx < len(errMsg) && errMsg[endIdx] >= '0' && errMsg[endIdx] <= '9' {
+			endIdx++
+		}
+		
+		if endIdx > startIdx {
+			if l, err := strconv.Atoi(errMsg[startIdx:endIdx]); err == nil {
+				line = l
+			}
+		}
+	}
+	
+	// Find "near '" pattern to detect that there's a parse error at specific position
+	// We can't determine exact column from error message, but we know there's an error
+	if strings.Contains(errMsg, "near '") {
+		// Set column to 1 as a default since TiDB doesn't provide exact column info
+		// This at least indicates there's positional information
+		column = 1
+	}
+	
+	return line, column
 }
 
 func main() {}
