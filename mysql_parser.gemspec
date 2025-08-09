@@ -1,12 +1,13 @@
 Gem::Specification.new do |spec|
   spec.name          = "mysql_parser"
   spec.version       = "0.1.2"
-  spec.authors       = ["Your Name"]
-  spec.email         = ["your.email@example.com"]
+  spec.authors       = ["minuteman3"]
+  spec.email         = ["mysql-parser@example.com"]
   spec.summary       = "Ruby bindings for TiDB MySQL parser"
   spec.description   = "Parse MySQL queries and get back AST using TiDB's parser"
-  spec.homepage      = "https://github.com/yourusername/mysql-parser"
+  spec.homepage      = "https://github.com/minuteman3/mysql-parser"
   spec.license       = "Apache-2.0"
+  spec.required_ruby_version = ">= 2.7.0"
   
   spec.metadata = {
     "github_repo" => "ssh://github.com/minuteman3/mysql-parser"
