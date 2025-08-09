@@ -1,11 +1,15 @@
 package main
 
+/*
+#include <stdlib.h>
+*/
+import "C"
 import (
-	"C"
 	"encoding/json"
 	"fmt"
 	"reflect"
 	"strings"
+	"unsafe"
 
 	"github.com/pingcap/parser"
 	"github.com/pingcap/parser/ast"
@@ -164,8 +168,7 @@ func parse_sql(sql *C.char) *C.char {
 
 //export free_string
 func free_string(str *C.char) {
-	// Memory will be managed by Go's garbage collector
-	// No need to explicitly free C.CString allocated memory
+	C.free(unsafe.Pointer(str))
 }
 
 func main() {}
